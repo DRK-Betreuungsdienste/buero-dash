@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="description" content="Büro-Dash: Der Sprung ins Wochenende – ein kleines Jump-and-Run durch die Geschäftsstelle.">
 <title>Büro-Dash</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#c00000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Büro-Dash">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <style>
   html, body { margin:0; height:100%; background:#2b2f3a; overflow:hidden; font-family:Arial, Helvetica, sans-serif;
     -webkit-user-select:none; user-select:none; touch-action:none; overscroll-behavior:none; -webkit-tap-highlight-color:transparent; }
@@ -26,6 +34,8 @@
     cursor:pointer; font-weight:bold; margin:10px 4px 0; font-family:inherit; }
   .tiny { font-size:12px; color:#777; margin-top:14px; line-height:1.5; }
   .version { font-size:12px; color:#555; margin-top:8px; font-weight:bold; }
+  .ioshint { font-size:13px; color:#7d0000; background:#fdeaea; border-radius:8px; padding:6px 10px; margin:10px auto 0; max-width:340px; }
+  [hidden] { display:none !important; }
   .hint { display:inline-block; background:#fdeaea; color:#7d0000; border-radius:8px; padding:6px 10px; font-size:14px; margin:4px 0 10px; }
 </style>
 </head>
@@ -40,6 +50,8 @@
     <div class="stats">Highscore: <b id="startHigh">0</b></div>
     <button class="big" id="btnStart">Los geht's</button><br>
     <button class="small" id="btnSoundStart">Ton: an</button>
+    <button class="small" id="btnInstall" hidden>📲 Als App installieren</button>
+    <div class="ioshint" id="iosHint" hidden>📲 Als App speichern: unten auf <b>Teilen</b> tippen, dann <b>„Zum Home-Bildschirm“</b>.</div>
     <div class="version" id="versionLine"></div>
     <div class="tiny">Idee und Spieldesign: Denise (Praktikum 2026) · DRK-Betreuungsdienste Westfalen-Lippe</div>
   </div>
@@ -78,7 +90,7 @@
 'use strict';
 
 // ---------------------------------------------------------------- Konstanten
-var VERSION = '1.4';
+var VERSION = '1.5';
 var STAND = '29.10.2026';
 var VH = 360;            // logische Höhe der Spielfläche
 var GROUND = 300;        // Bodenlinie (y, von oben)
@@ -1498,6 +1510,27 @@ resize();
 newGame();
 showScreen('scrStart');
 requestAnimationFrame(loop);
+
+
+// ---------------------------------------------------------------- App-Installation (PWA)
+(function () {
+  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
+  if (standalone) return;
+  var deferred = null, btn = document.getElementById('btnInstall');
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; btn.hidden = false; });
+  btn.addEventListener('click', function () {
+    if (!deferred) return;
+    deferred.prompt();
+    deferred.userChoice.then(function () { deferred = null; btn.hidden = true; }).catch(function () {});
+  });
+  window.addEventListener('appinstalled', function () { btn.hidden = true; });
+  var ua = navigator.userAgent || '';
+  var ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (ios && /^https?:$/.test(location.protocol)) document.getElementById('iosHint').hidden = false;
+})();
 
 // Testhaken (nur für Prüfzwecke, hat keinen Einfluss auf das Spiel)
 window.__bd = { music: music, get state() { return state; }, get G() { return G; }, press: pressJump, release: releaseJump, start: startGame, pause: togglePause, DEPTS: DEPTS, END: END, CUP_X: CUP_X, VERSION: VERSION, STAND: STAND, view: view, obstacleBoxes: obstacleBoxes, playerBox: playerBox };
